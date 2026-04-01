@@ -91,7 +91,7 @@ jobs:
           echo "DB_PORT=5432" >> .env
 
       - name: Démarrer les services avec Docker Compose
-        run: docker-compose up -d --build
+        run: docker compose up -d --build
 
       - name: Attendre le démarrage des services (15s)
         run: sleep 15
@@ -103,11 +103,11 @@ jobs:
           echo "HTTP Status: $STATUS"
           if [ "$STATUS" != "200" ]; then
             echo "ERREUR : Le health check a échoué (HTTP $STATUS)"
-            docker-compose logs backend
+            docker compose logs backend
             exit 1
           fi
           echo "Health check OK - Backend opérationnel"
 
       - name: Arrêter les services
         if: always()
-        run: docker-compose down
+        run: docker compose down
