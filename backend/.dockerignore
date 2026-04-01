@@ -1,0 +1,12 @@
+node_modules/
+*.log
+logs/
+
+.env
+.env.*
+
+.git/
+.gitignore
+
+README.md
+coverage/

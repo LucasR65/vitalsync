@@ -1,4 +1,10 @@
 node_modules/
-.env
+npm-debug.log*
 .env.local
-
+.env
+.env.*.local
+*.tar
+logs/
+*.log
+.vscode/
+.idea/

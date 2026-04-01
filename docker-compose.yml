@@ -1,0 +1,81 @@
+version: "3.9"
+
+# =====================================================================
+# Réseau personnalisé bridge :
+# - Isole les conteneurs du réseau Docker par défaut
+# - Seuls les services déclarés dans ce compose peuvent communiquer entre eux
+# - La résolution DNS interne fonctionne par nom de service
+#   (ex: "backend" résout vers l'IP du conteneur backend)
+# =====================================================================
+
+networks:
+  vitalsync-network:
+    driver: bridge
+
+# =======================================================================
+# Volume persistant PostgreSQL :
+# - Sans ce volume, toutes les données sont perdues à chaque
+#   "docker-compose down" car le système de fichiers du conteneur
+#   est éphémère par nature.
+# - Avec ce volume, les données survivent aux redémarrages.
+# =======================================================================
+
+volumes:
+  postgres-data:
+
+services:
+
+  # Base de données
+  database:
+    image: postgres:16-alpine
+    container_name: vitalsync-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - vitalsync-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vitalsync-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "3000:3000"
+    networks:
+      - vitalsync-network
+    depends_on:
+      database:
+        condition: service_healthy
+
+  # Frontend 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: vitalsync-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    networks:
+      - vitalsync-network
+    depends_on:
+      - backend
